@@ -48,17 +48,11 @@ client.on("ready", () => {
   // This event will run if the bot starts, and logs in, successfully.
   console.log(`Bot has started, with ${client.users.size} users, in ${client.channels.size} channels of ${client.guilds.size} guilds.`); 
   // Change the "playing game"
-  client.user.setActivity(`Adult WoE`);
+  client.user.setActivity(`Tribe Wars`);
 });
 
-client.on("guildCreate", guild => {
-  // This event triggers when the bot joins a guild.
-  console.log(`New guild joined: ${guild.name} (id: ${guild.id}). This guild has ${guild.memberCount} members!`);
-});
-
-client.on("guildDelete", guild => {
-  // this event triggers when the bot is removed from a guild.
-  console.log(`I have been removed from: ${guild.name} (id: ${guild.id})`);
+client.on("error", () => {
+	console.error;
 });
 
 try
@@ -95,17 +89,6 @@ client.on("message", async message => {
     return message.reply("List of commands: \n !help \n !say \n !sig (Character name) \n !setatt (Yes/No) \n !setnote (Note) \n !setjobs (Jobs)");
   }
   
-  if(command === "sig") {
-	//Parse character name and get a random background/pose
-    const characterName = args.join("%20");
-	const randomBG = (getRandomInt(1,11));
-	const randomPose = (getRandomInt(1,13));
-    // And we get the bot to say the thing: 
-    return message.reply('https://www.novaragnarok.com/ROChargenPHP/newsig/' +characterName+ '/' +randomBG+ '/' +randomPose);
-	// ("My Bot's message", {files: ['https://www.novaragnarok.com/ROChargenPHP/newsig/' +characterName+ '/' +randomBG+ '/' +randomPose"]});
-	//return message.reply({files: ['https://www.novaragnarok.com/ROChargenPHP/newsig/' +characterName+ '/' +randomBG+ '/' +randomPose]});
-  }
-  
   if(command === "say") {
 	const attMember = message.member.user.username;
 	  //Lock command to admin userid
@@ -123,11 +106,11 @@ client.on("message", async message => {
   
   if(command === "setatt") {
 	//Make sure you are part of the roster before you can set your attendance
-	if(!message.member.roles.some(r=>["core", "tryout", "guest"].includes(r.name)) )
-		return message.reply("you are not worthy.");
+	if(!message.member.roles.some(r=>["tribe-wars"].includes(r.name)) )
+		return message.reply("Please sign up to the roster before using this command.");
 	
 	//Parse username and status
-	const attMember = message.member.user.username;
+	const attMember = message.member.user.id;
 	switch (args[0].toLowerCase()) {
 		case "yes":
 		attStatus = "Yes";
@@ -144,23 +127,23 @@ client.on("message", async message => {
 	//Get all cells in the first row
 	sheet.getCells({
       'min-row': 1,
-	  'max-row': 70,
+	  'max-row': 99,
 	  'min-col': 1,
-      'max-col': 5,
+      'max-col': 7,
 	  'return-empty': true
     }, function(err, cells) {
 		var arrayLength = cells.length;
 		//Check if any match your username
 		for (var i = 0; i < arrayLength; i++) {
-			if (cells[i].value==attMember && cells[i].col==3)
+			if (cells[i].value==attMember && cells[i].col==5)
 			{
-			//If a match is found, update sheet and notify user
-			if (cells[i+1].col = 4) //Make sure the column is right
-			{
-			cells[i+1].setValue(attStatus);
-			console.log('Set attendance for ' +attMember+ ' to ' +attStatus);
-			}
-			return message.reply('```css\nAttendance: [' +attStatus+ ']\nJobs: ' +cells[i-2].value+ '\nNote: '+cells[i+2].value+ '```');
+				//If a match is found, update sheet and notify user
+				if (cells[i+1].col == 6) //Make sure the column is right
+				{
+					cells[i+1].setValue(attStatus);
+					console.log('Set attendance for ' +cells[i-1].value + ' to ' +attStatus);
+				}
+				return message.reply('```css\nAttendance: [' +cells[i+1].value+ ']\nWeapon: ' + cells[i-3].value + '\nCombat power: ' + cells[i-2].value + '\nNote: '+cells[i+2].value+ '```');
 			}
 		}
 		//Notify if no match is found
@@ -168,13 +151,13 @@ client.on("message", async message => {
 	})
   }
   
-  if(command === "setjobs") {
-	//Make sure you are part of the roster before you can set your jobs
-	if(!message.member.roles.some(r=>["core", "tryout", "guest"].includes(r.name)) )
-		return message.reply("you are not worthy.");
+  if(command === "setwep") {
+	//Make sure you are part of the roster before you can set your attendance
+	if(!message.member.roles.some(r=>["tribe-wars"].includes(r.name)) )
+		return message.reply("Please sign up to the roster before using this command.");
 	
 	//Parse username and status
-	const attMember = message.member.user.username;
+	const attMember = message.member.user.id;
 	const attStatus = args.join(" ");
 	
 	//Limit length to a max of 60 characters
@@ -184,23 +167,63 @@ client.on("message", async message => {
 	//Get all cells in the first row
 	sheet.getCells({
       'min-row': 1,
-	  'max-row': 70,
+	  'max-row': 99,
 	  'min-col': 1,
-      'max-col': 5,
+      'max-col': 7,
 	  'return-empty': true
     }, function(err, cells) {
 		var arrayLength = cells.length;
 		//Check if any match your username
 		for (var i = 0; i < arrayLength; i++) {
-			if (cells[i].value==attMember && cells[i].col==3)
+			if (cells[i].value==attMember && cells[i].col==5)
 			{
 			//If a match is found, update sheet and notify user
-			if (cells[i-2].col = 1) //Make sure the column is right
+			if (cells[i-3].col == 2) //Make sure the column is right
+			{
+				cells[i-3].setValue(attStatus);
+				console.log('Set weapons for ' + cells[i-1].value + ' to ' +attStatus);
+			}
+			return message.reply('```css\nAttendance: [' +cells[i+1].value+ ']\nWeapon: ' + cells[i-3].value + '\nCombat power: ' + cells[i-2].value + '\nNote: '+cells[i+2].value+ '```');
+			}
+		}
+		//Notify if no match is found
+		return message.reply(`I wasn't able to find you in the attendance sheet.`);
+	})
+  }
+  
+  if(command === "setcp") {
+	//Make sure you are part of the roster before you can set your attendance
+	if(!message.member.roles.some(r=>["tribe-wars"].includes(r.name)) )
+		return message.reply("Please sign up to the roster before using this command.");
+	
+	//Parse username and status
+	const attMember = message.member.user.id;
+	const attStatus = args.join(" ");
+	
+	//Limit length to a max of 7 characters
+	if (attStatus.length>7)
+		return message.reply("your CP message can have a maximum of 7 characters.");
+	
+	//Get all cells in the first row
+	sheet.getCells({
+      'min-row': 1,
+	  'max-row': 99,
+	  'min-col': 1,
+      'max-col': 7,
+	  'return-empty': true
+    }, function(err, cells) {
+		var arrayLength = cells.length;
+		//Check if any match your username
+		for (var i = 0; i < arrayLength; i++) {
+			if (cells[i].value==attMember && cells[i].col==5)
+			{
+			//If a match is found, update sheet and notify user
+			if (cells[i-2].col == 3) //Make sure the column is right
 			{
 				cells[i-2].setValue(attStatus);
-				console.log('Set jobs for ' +attMember+ ' to ' +attStatus);
+				console.log('Set combat power for ' + cells[i-1].value + ' to ' +attStatus);
 			}
-			return message.reply('```css\nAttendance: ' +cells[i+1].value+ '\nJobs: [' +attStatus+ ']\nNote: '+cells[i+2].value+ '```');
+			return message.reply('```css\nAttendance: [' +cells[i+1].value+ ']\nWeapon: ' + cells[i-3].value + '\nCombat power: ' + cells[i-2].value + '\nNote: '+cells[i+2].value+ '```');
 			}
 		}
 		//Notify if no match is found
@@ -209,37 +232,38 @@ client.on("message", async message => {
   }
   
     if(command === "setnote") {
-	//Make sure you are part of the roster before you can set your jobs
-	if(!message.member.roles.some(r=>["core", "tryout", "guest"].includes(r.name)) )
-		return message.reply("you are not worthy.");
+	//Make sure you are part of the roster before you can set your attendance
+	if(!message.member.roles.some(r=>["tribe-wars"].includes(r.name)) )
+		return message.reply("Please sign up to the roster before using this command.");
 	
 	//Parse username and status
-	const attMember = message.member.user.username;
+	const attMember = message.member.user.id;
 	const attStatus = args.join(" ");
 	
 	//Limit length to a max of 80 characters
 	if (attStatus.length>80)
 		return message.reply("your note can have a maximum of 80 characters.");
+	
 	//Get all cells in the first row
 	sheet.getCells({
       'min-row': 1,
-	  'max-row': 85,
+	  'max-row': 99,
 	  'min-col': 1,
-      'max-col': 5,
+      'max-col': 7,
 	  'return-empty': true
     }, function(err, cells) {
 		var arrayLength = cells.length;
 		//Check if any match your username
 		for (var i = 0; i < arrayLength; i++) {
-			if (cells[i].value==attMember && cells[i].col==3)
+			if (cells[i].value==attMember && cells[i].col==5)
 			{
 			//If a match is found, update sheet and notify user
-			if (cells[i+2].col = 5) //Make sure the column is right
+			if (cells[i+2].col == 7) //Make sure the column is right
 			{
 				cells[i+2].setValue(attStatus);
-				console.log('Set note for ' +attMember+ ' to ' +attStatus);
+				console.log('Set note for ' + cells[i-1].value + ' to ' +attStatus);
 			}
-			return message.reply('```css\nAttendance: ' +cells[i+1].value+ '\nJobs: ' +cells[i-2].value+ '\nNote: [' +attStatus+ ']```');
+			return message.reply('```css\nAttendance: [' +cells[i+1].value+ ']\nWeapon: ' + cells[i-3].value + '\nCombat power: ' + cells[i-2].value + '\nNote: '+cells[i+2].value+ '```');
 			}
 		}
 		//Notify if no match is found
