@@ -16,13 +16,6 @@ var async = require('async');
 // spreadsheet key is the long id in the sheets URL
 var doc = new GoogleSpreadsheet(config.sheetid);
 var sheet;
- 
-//Function for getting a random integer
-function getRandomInt(min, max) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
 
 //Load the spreadsheet
 async.series([
@@ -55,6 +48,31 @@ client.on("error", () => {
 	console.error;
 });
 
+function updateTableAndReturn(message, err, cells, member, valueToSet, valueName, colWithValue)	
+{
+	var arrayLength = cells.length;
+	//Check if any match your user ID
+	for (var i = 0; i < arrayLength; i++) {
+		// Col 5 is the col with IDs
+		if (cells[i].value == member && cells[i].col == 5)
+		{
+			//If a match is found, update sheet and notify user
+			if (cells[i+(colWithValue-5)].col == colWithValue) //Make sure the column is right
+			{
+				cells[i+(colWithValue-5)].setValue(valueToSet);
+				
+				const successMessage = 'Set ' + valueName + ' for ' + cells[i-1].value + ' to ' + valueToSet;
+				console.log(successMessage);
+				message.channel.send(successMessage);
+			}
+			
+			return message.reply('```css\nAttendance: [' +cells[i+1].value+ ']\nWeapon: [' + cells[i-3].value + ']\nCombat power: [' + cells[i-2].value + ']\nNote: ['+cells[i+2].value+ ']```');
+		}
+	}
+	//Notify if no match is found
+	return message.reply(`I wasn't able to find you in the attendance sheet.`);
+}
+
 try
 {
 client.on("message", async message => {
@@ -84,33 +102,39 @@ client.on("message", async message => {
   const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
   const command = args.shift().toLowerCase();
   
+  // Returns list of available commands
   if(command === "help") {
-	//Parse character name and get a random background/pose
-    return message.reply("List of commands: \n !help \n !say \n !sig (Character name) \n !setatt (Yes/No) \n !setnote (Note) \n !setjobs (Jobs)");
+    return message.reply("List of commands: \n !help \n !setatt (Yes/No) \n !setnote (Note) \n !setwep (Weapon name / both) \n !setcp (combat power number)");
   }
   
+  // Makes the bot say something and delete the message
   if(command === "say") {
 	const attMember = message.member.user.username;
-	  //Lock command to admin userid
+	// Lock command to admin userid
 	if(message.member.user.id!=config.adminid)
 		return message.reply("Idiot");
-    // makes the bot say something and delete the message
+	
     // To get the "message" itself we join the `args` back into a string with spaces: 
     const sayMessage = args.join(" ");
+	
     // Then we delete the command message (sneaky, right?). The catch just ignores the error with a cute smiley thing.
     message.delete().catch(O_o=>{}); 
+	
     // And we get the bot to say the thing: 
     message.channel.send(sayMessage);
 	console.log('Say: ' +attMember+ ' : ' +sayMessage);
+	return;
   }
   
-  if(command === "setatt") {
-	//Make sure you are part of the roster before you can set your attendance
-	if(!message.member.roles.some(r=>["tribe-wars"].includes(r.name)) )
+  //For the next commands, only people with these roles can use them
+  if(!message.member.roles.some(r=>["tribe-wars"].includes(r.name)) )
 		return message.reply("Please sign up to the roster before using this command.");
 	
-	//Parse username and status
-	const attMember = message.member.user.id;
+
+  //Parse user ID
+  const attMember = message.member.user.id;
+  
+  if(command === "setatt") {	
 	switch (args[0].toLowerCase()) {
 		case "yes":
 		attStatus = "Yes";
@@ -132,37 +156,16 @@ client.on("message", async message => {
       'max-col': 7,
 	  'return-empty': true
     }, function(err, cells) {
-		var arrayLength = cells.length;
-		//Check if any match your username
-		for (var i = 0; i < arrayLength; i++) {
-			if (cells[i].value==attMember && cells[i].col==5)
-			{
-				//If a match is found, update sheet and notify user
-				if (cells[i+1].col == 6) //Make sure the column is right
-				{
-					cells[i+1].setValue(attStatus);
-					console.log('Set attendance for ' +cells[i-1].value + ' to ' +attStatus);
-				}
-				return message.reply('```css\nAttendance: [' +cells[i+1].value+ ']\nWeapon: ' + cells[i-3].value + '\nCombat power: ' + cells[i-2].value + '\nNote: '+cells[i+2].value+ '```');
-			}
-		}
-		//Notify if no match is found
-		return message.reply(`I wasn't able to find you in the attendance sheet.`);
+		return updateTableAndReturn(message, err, cells, attMember, attStatus, 'attendance', 6);
 	})
   }
   
   if(command === "setwep") {
-	//Make sure you are part of the roster before you can set your attendance
-	if(!message.member.roles.some(r=>["tribe-wars"].includes(r.name)) )
-		return message.reply("Please sign up to the roster before using this command.");
-	
-	//Parse username and status
-	const attMember = message.member.user.id;
 	const attStatus = args.join(" ");
 	
 	//Limit length to a max of 60 characters
 	if (attStatus.length>60)
-		return message.reply("your jobs message can have a maximum of 60 characters.");
+		return message.reply("your weapon message can have a maximum of 60 characters.");
 	
 	//Get all cells in the first row
 	sheet.getCells({
@@ -172,37 +175,16 @@ client.on("message", async message => {
       'max-col': 7,
 	  'return-empty': true
     }, function(err, cells) {
-		var arrayLength = cells.length;
-		//Check if any match your username
-		for (var i = 0; i < arrayLength; i++) {
-			if (cells[i].value==attMember && cells[i].col==5)
-			{
-			//If a match is found, update sheet and notify user
-			if (cells[i-3].col == 2) //Make sure the column is right
-			{
-				cells[i-3].setValue(attStatus);
-				console.log('Set weapons for ' + cells[i-1].value + ' to ' +attStatus);
-			}
-			return message.reply('```css\nAttendance: [' +cells[i+1].value+ ']\nWeapon: ' + cells[i-3].value + '\nCombat power: ' + cells[i-2].value + '\nNote: '+cells[i+2].value+ '```');
-			}
-		}
-		//Notify if no match is found
-		return message.reply(`I wasn't able to find you in the attendance sheet.`);
+		return updateTableAndReturn(message, err, cells, attMember, attStatus, 'weapon', 2);
 	})
   }
   
-  if(command === "setcp") {
-	//Make sure you are part of the roster before you can set your attendance
-	if(!message.member.roles.some(r=>["tribe-wars"].includes(r.name)) )
-		return message.reply("Please sign up to the roster before using this command.");
-	
-	//Parse username and status
-	const attMember = message.member.user.id;
+  if(command === "setcp") {	
 	const attStatus = args.join(" ");
 	
 	//Limit length to a max of 7 characters
 	if (attStatus.length>7)
-		return message.reply("your CP message can have a maximum of 7 characters.");
+		return message.reply("your combat power can have a maximum of 7 characters.");
 	
 	//Get all cells in the first row
 	sheet.getCells({
@@ -212,32 +194,11 @@ client.on("message", async message => {
       'max-col': 7,
 	  'return-empty': true
     }, function(err, cells) {
-		var arrayLength = cells.length;
-		//Check if any match your username
-		for (var i = 0; i < arrayLength; i++) {
-			if (cells[i].value==attMember && cells[i].col==5)
-			{
-			//If a match is found, update sheet and notify user
-			if (cells[i-2].col == 3) //Make sure the column is right
-			{
-				cells[i-2].setValue(attStatus);
-				console.log('Set combat power for ' + cells[i-1].value + ' to ' +attStatus);
-			}
-			return message.reply('```css\nAttendance: [' +cells[i+1].value+ ']\nWeapon: ' + cells[i-3].value + '\nCombat power: ' + cells[i-2].value + '\nNote: '+cells[i+2].value+ '```');
-			}
-		}
-		//Notify if no match is found
-		return message.reply(`I wasn't able to find you in the attendance sheet.`);
+		return updateTableAndReturn(message, err, cells, attMember, attStatus, 'Combat power', 3);
 	})
   }
   
     if(command === "setnote") {
-	//Make sure you are part of the roster before you can set your attendance
-	if(!message.member.roles.some(r=>["tribe-wars"].includes(r.name)) )
-		return message.reply("Please sign up to the roster before using this command.");
-	
-	//Parse username and status
-	const attMember = message.member.user.id;
 	const attStatus = args.join(" ");
 	
 	//Limit length to a max of 80 characters
@@ -252,22 +213,7 @@ client.on("message", async message => {
       'max-col': 7,
 	  'return-empty': true
     }, function(err, cells) {
-		var arrayLength = cells.length;
-		//Check if any match your username
-		for (var i = 0; i < arrayLength; i++) {
-			if (cells[i].value==attMember && cells[i].col==5)
-			{
-			//If a match is found, update sheet and notify user
-			if (cells[i+2].col == 7) //Make sure the column is right
-			{
-				cells[i+2].setValue(attStatus);
-				console.log('Set note for ' + cells[i-1].value + ' to ' +attStatus);
-			}
-			return message.reply('```css\nAttendance: [' +cells[i+1].value+ ']\nWeapon: ' + cells[i-3].value + '\nCombat power: ' + cells[i-2].value + '\nNote: '+cells[i+2].value+ '```');
-			}
-		}
-		//Notify if no match is found
-		return message.reply(`I wasn't able to find you in the attendance sheet.`);
+		return updateTableAndReturn(message, err, cells, attMember, attStatus, 'Note', 7);
 	})
   }
   return;
