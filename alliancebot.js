@@ -1,3 +1,28 @@
+function updateTableAndReturn(message, err, cells, member, valueToSet, valueName, colWithValue)	
+{
+	var arrayLength = cells.length;
+	//Check if any match your user ID
+	for (var i = 0; i < arrayLength; i++) {
+		// Col 5 is the col with IDs
+		if (cells[i].value == member && cells[i].col == 5)
+		{
+			//If a match is found, update sheet and notify user
+			if (cells[i+(colWithValue-5)].col == colWithValue) //Make sure the column is right
+			{
+				cells[i+(colWithValue-5)].setValue(valueToSet);
+				
+				const successMessage = 'Set ' + valueName + ' for ' + cells[i-1].value + ' to ' + valueToSet;
+				console.log(successMessage);
+				message.channel.send(successMessage);
+			}
+			
+			return message.reply('```css\nAttendance: [' +cells[i+1].value+ ']\nWeapon: [' + cells[i-3].value + ']\nCombat power: [' + cells[i-2].value + ']\nNote: ['+cells[i+2].value+ ']```');
+		}
+	}
+	//Notify if no match is found
+	return message.reply(`I wasn't able to find you in the attendance sheet.`);
+}
+
 // Load up the discord.js library
 const Discord = require("discord.js");
 
@@ -47,31 +72,6 @@ client.on("ready", () => {
 client.on("error", () => {
 	console.error;
 });
-
-function updateTableAndReturn(message, err, cells, member, valueToSet, valueName, colWithValue)	
-{
-	var arrayLength = cells.length;
-	//Check if any match your user ID
-	for (var i = 0; i < arrayLength; i++) {
-		// Col 5 is the col with IDs
-		if (cells[i].value == member && cells[i].col == 5)
-		{
-			//If a match is found, update sheet and notify user
-			if (cells[i+(colWithValue-5)].col == colWithValue) //Make sure the column is right
-			{
-				cells[i+(colWithValue-5)].setValue(valueToSet);
-				
-				const successMessage = 'Set ' + valueName + ' for ' + cells[i-1].value + ' to ' + valueToSet;
-				console.log(successMessage);
-				message.channel.send(successMessage);
-			}
-			
-			return message.reply('```css\nAttendance: [' +cells[i+1].value+ ']\nWeapon: [' + cells[i-3].value + ']\nCombat power: [' + cells[i-2].value + ']\nNote: ['+cells[i+2].value+ ']```');
-		}
-	}
-	//Notify if no match is found
-	return message.reply(`I wasn't able to find you in the attendance sheet.`);
-}
 
 try
 {
@@ -133,6 +133,47 @@ client.on("message", async message => {
 
   //Parse user ID
   const attMember = message.member.user.id;
+  
+  //char_name class weapon combat_power
+  if(command === "register") {
+	if (args.length != 4)
+	{
+		return message.reply(`Correct command usage: !register name class weapon cp`);
+	}
+	
+	//Get all cells in the first row
+	sheet.getCells({
+      'min-row': 1,
+	  'max-row': 99,
+	  'min-col': 1,
+      'max-col': 7,
+	  'return-empty': true
+    }, function(err, cells) {
+		var arrayLength = cells.length;
+		//Check if any match your user ID
+		for (var i = 0; i < arrayLength; i++) 
+		{
+			// Col 5 is the col with IDs		
+			if (cells[i].value == attMember && cells[i].col == 5)
+			{
+				return message.reply('You\'re already registered! ```css\nCharacter: [' +cells[i-1].value+ ']\nClass: [' +cells[i-4].value+ ']\nWeapon: [' + cells[i-3].value + ']\nCombat power: [' + cells[i-2].value + ']```');
+			}
+			
+			// Empty line
+			else if (cells[i].value == '' && cells[i].col == 5)
+			{
+				cells[i].setValue(attMember); // Discord ID
+				cells[i-1].setValue(args[0]); // char name
+				cells[i-4].setValue(args[1]); // class
+				cells[i-3].setValue(args[2]); // weapon
+				cells[i-2].setValue(args[3]); // combat power
+				return message.reply('Character registered successfully. ```css\nCharacter registered: [' +cells[i-1].value+ ']\nClass: [' +cells[i-4].value+ ']\nWeapon: [' + cells[i-3].value + ']\nCombat power: [' + cells[i-2].value + ']```');
+			}
+		}
+		//Notify if no match is found
+		return message.reply(`The sheet is full, talk to an administrator to update it.`);
+	})
+  }
   
   if(command === "setatt") {	
 	switch (args[0].toLowerCase()) {
