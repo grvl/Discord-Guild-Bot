@@ -104,7 +104,7 @@ client.on("message", async message => {
   
   // Returns list of available commands
   if(command === "help") {
-    return message.reply("List of commands: \n !help \n !setatt (Yes/No) \n !setnote (Note) \n !setwep (Weapon name / both) \n !setcp (combat power number)");
+    return message.reply("List of commands: \n !help \n !register (name class weapon cp) !setatt (Yes/No) \n !setnote (Note) \n !setwep (Weapon name / both) \n !setcp (combat power number)");
   }
   
   // Makes the bot say something and delete the message
